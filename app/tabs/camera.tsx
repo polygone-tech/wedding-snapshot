@@ -1,25 +1,17 @@
 import { useState, useRef } from 'react';
-import { ImageSourcePropType, View, StyleSheet, Text, Pressable, Platform } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { View, StyleSheet, Text, Pressable, Platform } from 'react-native';
 import { Image } from "expo-image";
 import * as MediaLibrary from 'expo-media-library';
-import { CameraView, CameraMode, CameraType, useCameraPermissions } from 'expo-camera';
+import { CameraView, CameraMode, CameraType, useCameraPermissions, FlashMode } from 'expo-camera';
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Feather from "@expo/vector-icons/Feather";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
-import { captureRef } from 'react-native-view-shot';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import domtoimage from 'dom-to-image';
 
 import Button from '@/components/Button';
-import ImageViewer from '@/components/ImageViewer';
 import IconButton from '@/components/IconButton';
-import CircleButton from '@/components/CircleButton';
-import EmojiPicker from '@/components/EmojiPicker';
-import EmojiList from '@/components/EmojiList';
-import EmojiSticker from '@/components/EmojiSticker';
-
-import PlaceholderImage from '@/assets/images/background-image.png';
 
 export default function Camera() {
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
@@ -30,6 +22,7 @@ export default function Camera() {
   const [cameraMode, setCameraMode] = useState<CameraMode>("picture");
   const [cameraFacing, setCameraFacing] = useState<CameraType>("back");
   const [cameraRecording, setCameraRecording] = useState(false);
+  const [cameraFlash, setCameraFlash] = useState<FlashMode>("off");
 
   if (mediaPermission === null) {
     requestMediaPermission();
@@ -47,6 +40,16 @@ export default function Camera() {
         <Button theme="primary" label="Prendre une photo" onPress={requestCameraPermission} />
       </View>
     );
+  }
+
+  const toggleCameraFlash = () => {
+    if (cameraFlash === "off") {
+      setCameraFlash("on");
+    } else if (cameraFlash === "on") {
+      setCameraFlash("auto");
+    } else {
+      setCameraFlash("off");
+    }
   }
   
   const toggleCameraFacing = () => {
@@ -73,16 +76,31 @@ export default function Camera() {
     setCameraMode((prev) => (prev === "picture" ? "video" : "picture"));
   };
 
-  const toggleFacing = () => {
-    setCameraFacing((prev) => (prev === "back" ? "front" : "back"));
-  };
-
   const onSaveCameraImageAsync = async () => {
     try {
       if (cameraUri) {
-        await MediaLibrary.saveToLibraryAsync(cameraUri);
-        alert('Saved!');
-        setCameraUri(null);
+        if (Platform.OS !== 'web') {
+          await MediaLibrary.saveToLibraryAsync(cameraUri);
+          alert('Saved!');
+          setCameraUri(null);
+        } else {
+          try {
+            const dataUrl = await domtoimage.toJpeg(screenshotRef.current, {
+              quality: 0.95,
+              width: 320,
+              height: 440,
+            });
+    
+            let link = document.createElement('a');
+            link.download = 'sticker-smash.jpeg';
+            link.href = dataUrl;
+            link.click();
+            alert('Saved!');
+            setCameraUri(null);
+          } catch (e) {
+            console.log(e);
+          }
+        }
       } else {
         alert('No image to save.');
       }
@@ -122,8 +140,22 @@ export default function Camera() {
         mode={cameraMode}
         facing={cameraFacing}
         mute={false}
+        flash={cameraFlash}
         responsiveOrientationWhenOrientationLocked
       >
+        <View style={styles.flashContainer}>
+          <Pressable onPress={toggleCameraFlash}>
+            {cameraFlash === "off" ? (
+              <MaterialCommunityIcons name="flash-off" size={24} color="#fc791a" />
+            ) : cameraFlash === "on" ? (
+              <MaterialCommunityIcons name="flash" size={24} color="#fc791a" />
+            ) : cameraFlash === "auto" ? (
+              <MaterialCommunityIcons name="flash-auto" size={24} color="#fc791a" />
+            ) : (
+              <MaterialCommunityIcons name="flash-off" size={24} color="#fc791a" />
+            )}
+          </Pressable>
+          </View>
         <View style={styles.shutterContainer}>
           <Pressable onPress={toggleCameraMode}>
             {cameraMode === "picture" ? (
@@ -153,7 +185,7 @@ export default function Camera() {
               </View>
             )}
           </Pressable>
-          <Pressable onPress={toggleFacing}>
+          <Pressable onPress={toggleCameraFacing}>
             <FontAwesome6 name="camera-rotate" size={32} color="white" />
           </Pressable>
         </View>
@@ -182,6 +214,11 @@ const styles = StyleSheet.create({
   camera: {
     flex: 1,
     width: "100%",
+  },
+  flashContainer: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
   },
   shutterContainer: {
     position: "absolute",
