@@ -33,6 +33,14 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permettre à l'application MariageArnaudEtAude d'accéder à votre caméra",
+          "microphonePermission": "Permettre à l'application MariageArnaudEtAude d'accéder à votre microphone",
+          "recordAudioAndroid": true
+        }
       ]
     ],
     "experiments": {
