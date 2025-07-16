@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Text, Pressable, Platform } from 'react-native';
 import { Image } from "expo-image";
 import * as MediaLibrary from 'expo-media-library';
@@ -13,9 +13,15 @@ import domtoimage from 'dom-to-image';
 import Button from '@/components/Button';
 import IconButton from '@/components/IconButton';
 
+import { DeviceMotion } from 'expo-sensors';
+import * as ScreenOrientation from 'expo-screen-orientation';
+
+
 export default function Camera() {
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [sensorsPermission, setSensorsPermission] = useState(false);
+  const [deviceOrientation, setDeviceOrientation] = useState<ScreenOrientation.Orientation | null>(null);
   const screenshotRef = useRef<View>(null);
   const cameraRef = useRef<CameraView>(null);
   const [cameraUri, setCameraUri] = useState<string | null>(null);
@@ -24,6 +30,31 @@ export default function Camera() {
   const [cameraRecording, setCameraRecording] = useState(false);
   const [cameraFlash, setCameraFlash] = useState<FlashMode>("off");
 
+  const lockOrientation = async () => {
+    await ScreenOrientation.addOrientationChangeListener(({ orientationInfo }) => {
+      // if (orientationInfo.orientation === ScreenOrientation.Orientation.PORTRAIT_UP) {
+      //   ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      // } else {
+      //   ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+      // }
+      setDeviceOrientation(orientationInfo.orientation);
+      
+    })    
+  };
+
+  useEffect(() => {
+    lockOrientation();
+  }, []);
+  
+  const requestSensorsPermission = async () => {
+    const permissions = await DeviceMotion.requestPermissionsAsync();
+    setSensorsPermission(permissions.granted);
+  }
+
+  const getSensorsPermission = async() => {
+    await DeviceMotion.getPermissionsAsync();
+  } 
+  
   if (mediaPermission === null) {
     requestMediaPermission();
   }
@@ -35,9 +66,19 @@ export default function Camera() {
   if (!cameraPermission.granted) {
     // Camera permissions are not granted yet.
     return (
-      <View style={styles.container}>
-        <Text style={styles.message}>Les autorisations de Caméra doivent être accordées </Text>
-        <Button theme="primary" label="Prendre une photo" onPress={requestCameraPermission} />
+      <View style={portrait.container}>
+        <Text style={portrait.message}>Les autorisations de Caméra doivent être accordées </Text>
+        <Button theme="primary" label="Activer les autorisations de Caméra" onPress={requestCameraPermission} />
+      </View>
+    );
+  }
+
+  if (!sensorsPermission) {
+    // Sensors permissions are not granted yet.
+    return (
+      <View style={portrait.container}>
+        <Text style={portrait.message}>Les autorisations de capteurs doivent être accordées </Text>
+        <Button theme="primary" label="Activer les autorisations de capteurs" onPress={requestSensorsPermission} />
       </View>
     );
   }
@@ -111,8 +152,8 @@ export default function Camera() {
 
   if (cameraUri) {
     return (
-      <GestureHandlerRootView style={styles.container}>
-        <View style={styles.imageContainer}>
+      <GestureHandlerRootView style={portrait.container}>
+        <View style={portrait.imageContainer}>
           <View ref={screenshotRef} collapsable={false}>
             <Image
               source={cameraUri ? { uri: cameraUri } : undefined}
@@ -120,8 +161,8 @@ export default function Camera() {
               style={{ width: 400, aspectRatio: 1 }}
             />
           </View>
-          <View style={styles.optionsContainer}>
-            <View style={styles.optionsRow}>
+          <View style={portrait.optionsContainer}>
+            <View style={portrait.optionsRow}>
               <IconButton icon="refresh" label="Nouvelle photo" onPress={() => setCameraUri(null)} />
               <IconButton icon="save-alt" label="Sauvegarder" onPress={onSaveCameraImageAsync} />
             </View>
@@ -133,42 +174,44 @@ export default function Camera() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={portrait.container}>
       <CameraView
-        style={styles.camera}
+        animateShutter
+        style={portrait.camera}
         ref={cameraRef}
         mode={cameraMode}
         facing={cameraFacing}
         mute={false}
         flash={cameraFlash}
         responsiveOrientationWhenOrientationLocked
+        onMountError={(error) => console.error('Camera mount error:', error)}
       >
-        <View style={styles.flashContainer}>
+        <View style={deviceOrientation === 3 ? landscape.flashContainer : portrait.flashContainer}>
           <Pressable onPress={toggleCameraFlash}>
             {cameraFlash === "off" ? (
-              <MaterialCommunityIcons name="flash-off" size={24} color="#fc791a" />
+              <MaterialCommunityIcons name="flash-off" size={deviceOrientation === 3 ? 24 : 32} color="#fff" />
             ) : cameraFlash === "on" ? (
-              <MaterialCommunityIcons name="flash" size={24} color="#fc791a" />
+              <MaterialCommunityIcons name="flash" size={deviceOrientation === 3 ? 24 : 32} color="#fc791a" />
             ) : cameraFlash === "auto" ? (
-              <MaterialCommunityIcons name="flash-auto" size={24} color="#fc791a" />
+              <MaterialCommunityIcons name="flash-auto" size={deviceOrientation === 3 ? 24 : 32} color="#fc791a" />
             ) : (
-              <MaterialCommunityIcons name="flash-off" size={24} color="#fc791a" />
+              <MaterialCommunityIcons name="flash-off" size={deviceOrientation === 3 ? 24 : 32} color="#fff" />
             )}
           </Pressable>
-          </View>
-        <View style={styles.shutterContainer}>
+        </View>
+        <View style={deviceOrientation === 3 ? landscape.shutterContainer : portrait.shutterContainer}>
           <Pressable onPress={toggleCameraMode}>
             {cameraMode === "picture" ? (
-              <Feather name="video" size={32} color="white" />
+              <Feather name="video" size={deviceOrientation === 3 ? 24 : 32} color="white" />
             ) : (
-              <AntDesign name="camera" size={32} color="white" />
+              <AntDesign name="camera" size={deviceOrientation === 3 ? 24 : 32} color="white" />
             )}
           </Pressable>
           <Pressable onPress={cameraMode === "picture" ? takeCameraPicture : recordCameraVideo}>
             {({ pressed }) => (
               <View
                 style={[
-                  styles.shutterBtn,
+                  deviceOrientation === 3 ? landscape.shutterBtn : portrait.shutterBtn,
                   {
                     opacity: pressed ? 0.5 : 1,
                   },
@@ -176,17 +219,16 @@ export default function Camera() {
               >
                 <View
                   style={[
-                    styles.shutterBtnInner,
+                    portrait.shutterBtnInner,
                     {
                       backgroundColor: cameraMode === "picture" ? "white" : "red",
                     },
-                  ]}
-                />
+                  ]} />
               </View>
             )}
           </Pressable>
           <Pressable onPress={toggleCameraFacing}>
-            <FontAwesome6 name="camera-rotate" size={32} color="white" />
+            <FontAwesome6 name="camera-rotate" size={deviceOrientation === 3 ? 24 : 32} color="white" />
           </Pressable>
         </View>
       </CameraView>
@@ -194,7 +236,7 @@ export default function Camera() {
   );
 }
 
-const styles = StyleSheet.create({
+const portrait = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#25292e',
@@ -228,6 +270,72 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
+    paddingHorizontal: 30,
+  },
+  shutterBtn: {
+    backgroundColor: "transparent",
+    borderWidth: 5,
+    borderColor: "white",
+    width: 85,
+    height: 85,
+    borderRadius: 45,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shutterBtnInner: {
+    width: 70,
+    height: 70,
+    borderRadius: 50,
+  },
+  optionsContainer: {
+    position: 'absolute',
+    bottom: 80,
+    left: 50,
+  },
+  optionsRow: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+});
+
+const landscape = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#25292e',
+    alignItems: 'center',
+  },
+  message: {
+    textAlign: 'center',
+    paddingBottom: 10,
+  },
+  imageContainer: {
+    flex: 1,
+  },
+  footerContainer: {
+    flex: 1 / 3,
+    alignItems: 'center',
+  },
+  camera: {
+    flex: 1,
+    width: "100%",
+  },
+  flashContainer: {
+    position: 'absolute',
+    top: 30,
+    left: 20,
+  },
+  shutterContainer: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: "100%",
+    height: "100%",
+    alignItems: "flex-end",
+    flexDirection: "column",
+    justifyContent: "space-around",
     paddingHorizontal: 30,
   },
   shutterBtn: {

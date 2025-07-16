@@ -41,6 +41,18 @@
           "microphonePermission": "Permettre à l'application MariageArnaudEtAude d'accéder à votre microphone",
           "recordAudioAndroid": true
         }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Permettre à l'application MariageArnaudEtAude d'accéder aux capteurs de mouvement"
+        }
+      ],
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "DEFAULT"
+        }
       ]
     ],
     "experiments": {

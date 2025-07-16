@@ -21,6 +21,7 @@ export default function TabLayout() {
         name="camera"
         options={{
           title: 'Caméra',
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'camera-sharp' : 'camera-outline'} color={color} size={24} />
           ),
