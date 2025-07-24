@@ -37,6 +37,15 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="images"
+        options={{
+          title: 'Photos',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'download-sharp' : 'download-outline'} color={color} size={24} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

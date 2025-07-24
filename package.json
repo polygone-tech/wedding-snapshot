@@ -1,6 +1,7 @@
 {
   "name": "weddingsnapshot",
   "main": "expo-router/entry",
+  "type": "module",
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
@@ -11,6 +12,12 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity": "^3.848.0",
+    "@aws-sdk/client-s3": "^3.850.0",
+    "@aws-sdk/credential-provider-cognito-identity": "^3.848.0",
+    "@aws-sdk/credential-providers": "^3.848.0",
+    "@aws-sdk/hash-node": "^3.370.0",
+    "@aws-sdk/s3-request-presigner": "^3.850.0",
     "@expo/vector-icons": "^14.1.0",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
@@ -27,6 +34,8 @@
     "expo-linking": "~7.1.5",
     "expo-media-library": "~17.1.7",
     "expo-router": "~5.1.0",
+    "expo-screen-orientation": "~8.1.7",
+    "expo-sensors": "~14.1.4",
     "expo-splash-screen": "~0.30.9",
     "expo-status-bar": "~2.2.3",
     "expo-symbols": "~0.4.5",
@@ -42,12 +51,11 @@
     "react-native-view-shot": "4.0.3",
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
-    "typescript": "~5.8.3",
-    "expo-screen-orientation": "~8.1.7",
-    "expo-sensors": "~14.1.4"
+    "typescript": "~5.8.3"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@babel/plugin-transform-class-static-block": "^7.27.1",
     "@flydotio/dockerfile": "^0.7.10",
     "@types/react": "~19.0.10",
     "eslint": "^9.25.0",

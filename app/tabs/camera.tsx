@@ -16,6 +16,7 @@ import IconButton from '@/components/IconButton';
 import { DeviceMotion } from 'expo-sensors';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
+import { uploadFiletoS3, listObjectsFromS3 } from '@/services/awsS3';
 
 export default function Camera() {
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
@@ -30,7 +31,7 @@ export default function Camera() {
   const [cameraRecording, setCameraRecording] = useState(false);
   const [cameraFlash, setCameraFlash] = useState<FlashMode>("off");
 
-  const lockOrientation = async () => {
+  const retrieveOrientation = async () => {
     await ScreenOrientation.addOrientationChangeListener(({ orientationInfo }) => {
       // if (orientationInfo.orientation === ScreenOrientation.Orientation.PORTRAIT_UP) {
       //   ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
@@ -43,7 +44,11 @@ export default function Camera() {
   };
 
   useEffect(() => {
-    lockOrientation();
+    retrieveOrientation();
+  }, []);
+
+  useEffect(() => {
+    getSensorsPermission();
   }, []);
   
   const requestSensorsPermission = async () => {
@@ -52,11 +57,16 @@ export default function Camera() {
   }
 
   const getSensorsPermission = async() => {
-    await DeviceMotion.getPermissionsAsync();
+    const permissions = await DeviceMotion.getPermissionsAsync();
+    setSensorsPermission(permissions.granted);
   } 
   
   if (mediaPermission === null) {
     requestMediaPermission();
+  }
+
+  if (sensorsPermission === null) {
+    getSensorsPermission();
   }
 
   if (!cameraPermission) {
@@ -122,6 +132,9 @@ export default function Camera() {
       if (cameraUri) {
         if (Platform.OS !== 'web') {
           await MediaLibrary.saveToLibraryAsync(cameraUri);
+
+          await listObjectsFromS3();
+
           alert('Saved!');
           setCameraUri(null);
         } else {
