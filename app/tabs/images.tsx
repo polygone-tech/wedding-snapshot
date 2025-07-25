@@ -151,9 +151,7 @@ const Images = () => {
 
   useEffect(() => {    
     const command = new ListObjectsCommand({ Bucket: "weddingsnapshot" });
-    S3client.send(command).then(({ Contents }) => setObjects(Contents || []));
-    setSelectedObject(objects[0]);
-    console.log("Objects fetched from S3:", objects[0]);
+    S3client.send(command).then(({ Contents }) => {setObjects(Contents || [])});    
   }, []);
 
   useEffect(() => {    
@@ -165,8 +163,16 @@ const Images = () => {
         }
       }
     }
-    displayImage();
+    displayImage();    
   }, []);
+
+  if (objects.length === 0) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.message}>Aucun objet trouvé dans le bucket S3.</Text>
+        <IconButton icon="refresh" label="Rafraîchir" onPress={() => lastObject()} />
+      </View>
+    )};
 
   return (    
     <View style={styles.container}>
@@ -175,6 +181,9 @@ const Images = () => {
           imgSource={PlaceholderImage}
           selectedImage={selectedImage && typeof selectedImage === 'object' && 'uri' in selectedImage ? selectedImage.uri : undefined}
         />
+        <Text style={styles.message}>
+          {selectedObject ? `Image: ${selectedObject.Key}` : 'Aucune image sélectionnée'}
+        </Text>
       </View>
       
       <View style={styles.footerContainer}>

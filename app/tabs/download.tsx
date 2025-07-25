@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ImageSourcePropType, View, StyleSheet, Text, Pressable, Platform } from 'react-native';
+import { ImageBackground, View, StyleSheet, Text, Pressable, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { captureRef } from 'react-native-view-shot';
@@ -10,16 +10,25 @@ import Button from '@/components/Button';
 import ImageViewer from '@/components/ImageViewer';
 import IconButton from '@/components/IconButton';
 
-import PlaceholderImage from '@/assets/images/undraw_no-data_ig65.png';
+import PlaceholderImage from '@/assets/images/couple-sunset.png';
+import { BlurView } from 'expo-blur';
+import { uploadImageToS3 } from '@/services/awsS3';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    height: 120,
     display: 'flex',
     justifyContent: 'center',
-    backgroundColor: '#e1edfd',
+    margin: 0,
+    overflow: 'hidden'
+  },
+  background: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  content: {
     alignItems: 'center',
-    backgroundImage: `url(${PlaceholderImage})`,
   },
   message: {
     textAlign: 'center',
@@ -27,7 +36,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     flex: 1,
-    display: 'flex',
+    marginTop: 20,
     justifyContent: 'center',
     alignItems: 'center'
   },
@@ -66,7 +75,9 @@ const styles = StyleSheet.create({
     borderRadius: 50,
   },
   optionsContainer: {
-    marginTop: 20,
+    marginTop: 30,
+    flex: 1 / 3,
+    alignItems: 'center',
   },
   optionsRow: {
     width: '100%',
@@ -101,6 +112,8 @@ const Download = () => {
   };
 
   const onSaveImageAsync = async () => {
+    const date = Date.now();
+    const filename = `${date}.jpeg`;
     if (Platform.OS !== 'web') {
       try {
         const localUri = await captureRef(screenshotRef, {
@@ -109,6 +122,7 @@ const Download = () => {
         });
 
         await MediaLibrary.saveToLibraryAsync(localUri);
+        await uploadImageToS3(localUri, filename);
         if (localUri) {
           alert('Saved!');
           setSelectedImage(undefined);
@@ -123,9 +137,11 @@ const Download = () => {
           width: 320,
           height: 440,
         });
+        console.log(dataUrl);
+        await uploadImageToS3(dataUrl, filename);
 
         let link = document.createElement('a');
-        link.download = 'sticker-smash.jpeg';
+        link.download = filename;
         link.href = dataUrl;
         link.click();
         setSelectedImage(undefined);
@@ -137,23 +153,30 @@ const Download = () => {
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      <View style={styles.imageContainer}>
-        <View ref={screenshotRef} collapsable={false}>
-          {selectedImage && <ImageViewer imgSource={PlaceholderImage} selectedImage={selectedImage} />}
-        </View>
-       {selectedImage ? (
-          <View style={styles.optionsContainer}>
-            <View style={styles.optionsRow}>
-              <IconButton icon="refresh" label="Nouvelle photo" onPress={pickImageAsync} />
-              <IconButton icon="save-alt" label="Sauvegarder" onPress={onSaveImageAsync} />
+      <ImageBackground
+        source={PlaceholderImage} // or a local file
+        resizeMode="cover" // or 'contain', 'stretch'
+        style={styles.background}
+      >
+        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+        <View >
+          <View style={styles.imageContainer}ref={screenshotRef} collapsable={false}>
+            {selectedImage && <ImageViewer imgSource={PlaceholderImage} selectedImage={selectedImage} />}
+          </View>
+          {selectedImage ? (
+            <View style={styles.optionsContainer}>
+              <View style={styles.optionsRow}>
+                <IconButton icon="refresh" label="Nouvelle photo" onPress={pickImageAsync} />
+                <IconButton icon="save-alt" label="Sauvegarder" onPress={onSaveImageAsync} />
+              </View>
             </View>
-          </View>
-        ) : (
-          <View style={styles.footerContainer}>
-            <Button theme="primary" label="Télécharger une image" onPress={pickImageAsync} />
-          </View>
-        )}
-    </View>
+          ) : (
+            <View style={styles.footerContainer}>
+              <Button theme="primary" label="Télécharger une image" onPress={pickImageAsync} />
+            </View>
+          )}
+      </View>
+    </ImageBackground>
   </GestureHandlerRootView>
   );
 }

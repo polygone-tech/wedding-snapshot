@@ -5,9 +5,12 @@ import {
   S3ServiceException,
 } from "@aws-sdk/client-s3";
 import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 
 
-const client = new S3Client({
+const s3Client = new S3Client({
   // The AWS Region where the Amazon Simple Storage Service (Amazon S3) bucket will be created. Replace this with your Region.
   region: "us-east-1",
   credentials: fromCognitoIdentityPool({
@@ -26,42 +29,69 @@ const client = new S3Client({
  * 
  * 
  */
-export const uploadFiletoS3 = async ({
-  filePath,
-}: { filePath: string }) => {
-  const fileStream = await fetch(filePath).then((response) => response.body);
-  
+
+/**
+ * Convert base64 data URL to Blob (Web only)
+ */
+
+const getPresignedUploadUrl = async (fileName: string, contentType: string): Promise<string> => {
   const command = new PutObjectCommand({
     Bucket: "weddingsnapshot",
-    Key: Date.now() + "-" + "test",
-    Body: fileStream || undefined,
+    Key: fileName,
+    ContentType: contentType,
   });
 
-  try {
-    const response = await client.send(command);
-    console.log(response);
-  } catch (caught) {
-    if (
-      caught instanceof S3ServiceException &&
-      caught.name === "EntityTooLarge"
-    ) {
-      console.error(
-        `Error from S3 while uploading object to bucket. \
-The object was too large. To upload objects larger than 5GB, use the S3 console (160GB max) \
-or the multipart upload API (5TB max).`,
-      );
-    } else if (caught instanceof S3ServiceException) {
-      console.error(
-        `Error from S3 while uploading object to bucket.  ${caught.name}: ${caught.message}`,
-      );
-    } else {
-      throw caught;
-    }
+  const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 60 });
+  return signedUrl;
+}
+
+const dataUrlToBlob = (dataUrl: string): Blob =>{
+  const arr = dataUrl.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+  const bstr = atob(arr[1]);
+  const u8arr = new Uint8Array(bstr.length);
+  for (let i = 0; i < bstr.length; i++) {
+    u8arr[i] = bstr.charCodeAt(i);
   }
-};
+  return new Blob([u8arr], { type: mime });
+}
+
+/**
+ * Uploads an image (either from a URI on native or data URL on web) to S3.
+ */
+export async function uploadImageToS3(
+  imageSource: string, // localUri (native) or dataUrl (web)
+  fileName: string
+): Promise<string> {
+  let blob: Blob;
+  let contentType: string;
+
+  if (Platform.OS === 'web') {
+    blob = dataUrlToBlob(imageSource);
+    contentType = blob.type;
+  } else {
+    const response = await fetch(imageSource);
+    blob = await response.blob();
+    contentType = blob.type || 'image/jpeg';
+  }
+
+  const presignedUrl = await getPresignedUploadUrl(fileName, contentType);
+
+  const uploadRes = await fetch(presignedUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': contentType,
+    },
+    body: blob,
+  });
+
+  if (!uploadRes.ok) throw new Error('S3 upload failed');
+
+  return presignedUrl.split('?')[0]; // public S3 URL
+}
 
 export const listObjectsFromS3 = async () => {
   const command = new ListObjectsCommand({ Bucket: "weddingsnapshot" });
   console.log(command);
-  client.send(command).then(({ Contents }) => Contents || [])
+  s3Client.send(command).then(({ Contents }) => Contents || [])
 }

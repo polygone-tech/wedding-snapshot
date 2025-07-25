@@ -16,7 +16,7 @@ import IconButton from '@/components/IconButton';
 import { DeviceMotion } from 'expo-sensors';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
-import { uploadFiletoS3, listObjectsFromS3 } from '@/services/awsS3';
+import { uploadImageToS3 } from '@/services/awsS3';
 
 export default function Camera() {
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
@@ -128,13 +128,13 @@ export default function Camera() {
   };
 
   const onSaveCameraImageAsync = async () => {
+    const date = Date.now();
+    const filename = `${date}.jpeg`;
     try {
       if (cameraUri) {
         if (Platform.OS !== 'web') {
           await MediaLibrary.saveToLibraryAsync(cameraUri);
-
-          await listObjectsFromS3();
-
+          await uploadImageToS3(cameraUri, filename);
           alert('Saved!');
           setCameraUri(null);
         } else {
@@ -144,9 +144,10 @@ export default function Camera() {
               width: 320,
               height: 440,
             });
+            await uploadImageToS3(dataUrl, filename);
     
             let link = document.createElement('a');
-            link.download = 'sticker-smash.jpeg';
+            link.download = filename;
             link.href = dataUrl;
             link.click();
             alert('Saved!');
